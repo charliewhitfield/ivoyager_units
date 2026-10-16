@@ -630,6 +630,9 @@ func fixed_unit(x: float, unit: StringName, precision := 3,
 ## the generated string may look ok but be incorrect. E.g., 1000.0 m^3 would
 ## generate something like "1.00 km^3".[br][br]
 ##
+## For a bare prefix with no unit, pass [param unit] &"" for "100k" or &" " for
+## "100 k". Either way, a quantity needing no prefix has no trailing space ("100").[br][br]
+##
 ## The numerical part of the quantity string will be formatted as in [method number].
 ## Use of DYNAMIC or DYNAMIC_PRECISION makes the most sense here, so that scientific
 ## notation will happen only for quantities outside the range of SI units.[br][br]
@@ -643,7 +646,7 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 	
 	if is_nan(x):
 		return "NAN"
-	if unit:
+	if unit and unit != &" ":
 		x = IVQConvert.from_internal(x, unit)
 	var exponent_triples := 0
 	if x != 0.0:
@@ -679,7 +682,11 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 	
 	else: # short format (no case changes for prefix or symbols)
 		var prefix_symbol: String = prefix_symbols[si_index]
-		if unspaced_unit_symbols.has(unit):
+		if unit == &"":
+			unit_str = prefix_symbol
+		elif unit == &" ":
+			unit_str = " " + prefix_symbol if prefix_symbol else ""
+		elif unspaced_unit_symbols.has(unit):
 			if prefix_symbol == "":
 				unit_str = unspaced_unit_symbols[unit]
 			else: # prefix needs a space!

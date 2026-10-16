@@ -4,6 +4,12 @@ This file documents changes to [ivoyager_units](https://github.com/ivoyager/ivoy
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.3] - UNRELEASED
+
+### Added
+* IVQFormat.prefixed_unit() returns a bare SI prefix ("100k" or "100 k") for unit &"" or &" ".
+
+
 ## [v0.1.2] - 2025-06-29
 
 Released using Godot 4.7.
@@ -71,6 +77,7 @@ Released using Godot 4.3.
 
 This plugin resulted from splitting the now-depreciated [Table Importer](https://github.com/ivoyager/ivoyager_table_importer) (v0.0.9) into two plugins: [Tables](https://github.com/ivoyager/ivoyager_tables) (v0.0.1) and [Units](https://github.com/ivoyager/ivoyager_units) (v0.0.1).
 
+[0.2.3]: https://github.com/ivoyager/ivoyager_units/compare/v0.1.2...HEAD
 [v0.1.2]: https://github.com/ivoyager/ivoyager_units/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/ivoyager/ivoyager_units/compare/v0.1...v0.1.1
 [v0.1]: https://github.com/ivoyager/ivoyager_units/compare/v0.0.4...v0.1
