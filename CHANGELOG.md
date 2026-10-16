@@ -9,6 +9,12 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 * IVQFormat.prefixed_unit() returns a bare SI prefix ("100k" or "100 k") for unit &"" or &" ".
 
+### Changed
+* Rewrote IVQFormat.number(), now ~20% faster; it rounds half away from zero and shows digits past 17 as zeros.
+
+### Fixed
+* IVQFormat.number() no longer leaves a trailing "." ("100.", "1000."), returns "INF" or "-INF" for infinite x, and no longer shows very small MIN_PRECISION or PRECISION numbers as all zeros.
+
 
 ## [v0.1.2] - 2025-06-29
 

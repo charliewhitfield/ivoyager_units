@@ -390,6 +390,16 @@ var _to_localize: Array[StringName] = [&"TXT_NORTH", &"TXT_SOUTH", &"TXT_EAST", 
 		&"TXT_LATITUDE_SHORT", &"TXT_LONGITUDE_SHORT"]
 
 
+# Returns abs_x * 10^shift rounded to an integer. Overflow of 10^shift (for
+# subnormal abs_x) and the error of an inexact negative power of ten are avoided.
+static func _round_to_digits(abs_x: float, shift: int) -> float:
+	if shift > 300:
+		return roundf(abs_x * 1e300 * 10.0 ** (shift - 300))
+	if shift >= 0:
+		return roundf(abs_x * 10.0 ** shift)
+	return roundf(abs_x / 10.0 ** -shift)
+
+
 func _ready() -> void:
 	reset()
 	
@@ -438,21 +448,26 @@ func reset() -> void:
 ## If [param precision] is 0 and number_type != DECIMAL_PLACES, return string
 ## will have 1 significant digit with a prepended "~". E.g., "~1 km" or "~0.5 km".[br][br]
 ##
-## Returns "NAN" if [param x] is NAN.
+## Rounds half away from zero. Significant digits beyond 17, more than a float
+## holds, are shown as zeros.[br][br]
+##
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
 func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> String:
-	const DYNAMIC := NumberType.DYNAMIC
 	const SCIENTIFIC := NumberType.SCIENTIFIC
 	const MIN_PRECISION := NumberType.MIN_PRECISION
 	const PRECISION := NumberType.PRECISION
+	const DYNAMIC_PRECISION := NumberType.DYNAMIC_PRECISION
 	const DECIMAL_PLACES := NumberType.DECIMAL_PLACES
 	const LOG_MULTIPLIER := 1.0 / log(10.0)
-	const DECIMAL_UNICODE := ord(".")
+	const MAX_DIGITS := 17
 	
 	assert(precision >= -1)
 	if is_nan(x):
 		return "NAN"
 	if number_type == DECIMAL_PLACES or precision == -1:
 		return String.num(x, precision)
+	if is_inf(x):
+		return "INF" if x > 0.0 else "-INF"
 	
 	# approximate "~" prepend for zero precision
 	var prepend := ""
@@ -460,42 +475,63 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 		prepend = "~"
 		precision = 1
 	
-	# handle 0.0 case (avoids math error below and we don't want "0.00e0" even if SCIENTIFIC)
+	# zero has no exponent, so is never scientific; -0.0 gets no sign
 	if x == 0.0:
-		return "%s%.*f" % [prepend, precision - 1, 0.0] # e.g., "0.00" for precision 3
+		if precision == 1:
+			return prepend + "0"
+		return prepend + "0." + "0".repeat(precision - 1)
 	
+	if x < 0.0:
+		prepend += "-"
 	var abs_x := absf(x)
-	var exponent := floori(log(abs_x) * LOG_MULTIPLIER)
 	
-	# Note: Due to imprecision in equationa above AND to round up below (to 10,
-	# 100, etc.), exponent is sometimes one less than it should be. This is
-	# handled below where needed.
+	# Round to an integer significand of exactly n_digits digits. The log
+	# estimate of the exponent can be one off near a power of ten, and rounding
+	# can carry into the next power (99.96 -> 100.0); either shows up as a
+	# significand out of range, and re-rounding at the corrected exponent fixes it.
+	var n_digits := mini(precision, MAX_DIGITS)
+	var exponent := floori(log(abs_x) * LOG_MULTIPLIER)
+	var shift := n_digits - 1 - exponent
+	var significand: float
+	if shift > 300:
+		significand = _round_to_digits(abs_x, shift)
+	elif shift >= 0: # common cases inline: a call costs ~10% of this function
+		significand = roundf(abs_x * 10.0 ** shift)
+	else:
+		significand = roundf(abs_x / 10.0 ** -shift)
+	var significand_limit := 10.0 ** n_digits
+	if significand >= significand_limit:
+		exponent += 1
+		significand = _round_to_digits(abs_x, n_digits - 1 - exponent)
+	elif significand < significand_limit / 10.0:
+		exponent -= 1
+		significand = _round_to_digits(abs_x, n_digits - 1 - exponent)
+	# At 16 or 17 digits, float error can leave a value that rounds to a power
+	# of ten on the wrong side of it at either exponent.
+	if significand >= significand_limit:
+		significand = significand_limit / 10.0
+		exponent += 1
+	elif significand < significand_limit / 10.0:
+		significand = significand_limit / 10.0
+	var digits := str(int(significand))
+	if n_digits < precision:
+		digits += "0".repeat(precision - n_digits)
 	
 	if (number_type == MIN_PRECISION or number_type == PRECISION
 			or (number_type != SCIENTIFIC and abs_x < dynamic_large and abs_x > dynamic_small)):
-		var decimal_pl := precision - exponent - 1
-		if decimal_pl > 0: # has decimal part
-			var number_str := "%.*f" % [decimal_pl, x]
-			# Fix excess precision (e.g., 0.999999 w/ precision 3 -> "1.000").
-			if number_str[-1] == "0":
-				if number_str.remove_char(DECIMAL_UNICODE).lstrip("-0").length() > precision:
-					number_str = number_str.left(-1)
-			return prepend + number_str
-		elif number_type == DYNAMIC or number_type == MIN_PRECISION or decimal_pl == 0:
-			return prepend + String.num(x, 0) # whole number
-		else: # PRECISION or DYNAMIC_PRECISION whole number w/ too much precision
-			return prepend + String.num(snappedf(x, 10.0 ** -decimal_pl), 0) # 555555 -> "556000"
+		if exponent < 0:
+			return prepend + "0." + "0".repeat(-exponent - 1) + digits
+		if exponent < precision - 1:
+			return prepend + digits.left(exponent + 1) + "." + digits.substr(exponent + 1)
+		if (exponent == precision - 1 or number_type == PRECISION
+				or number_type == DYNAMIC_PRECISION):
+			return prepend + digits + "0".repeat(exponent - precision + 1) # 555555 -> "556000"
+		return prepend + String.num(roundf(abs_x), 0) # whole number, over-precision allowed
 	
 	# scientific
-	var sign_str := "-" if x < 0.0 else ""
-	var divisor := 10.0 ** exponent # need float for 0.1, 0.01, ...!
-	var mantissa := abs_x / divisor if divisor != 0.0 else 1.0
-	var mantissa_str := "%.*f" % [precision - 1, mantissa]
-	if mantissa_str.length() > 1 and mantissa_str[1] == "0": # fix "10"
-		mantissa_str = "%.*f" % [precision - 1, 1.0]
-		exponent += 1
-	
-	return prepend + sign_str + mantissa_str + exponent_str + str(exponent)
+	if precision == 1:
+		return prepend + digits + exponent_str + str(exponent)
+	return prepend + digits.left(1) + "." + digits.substr(1) + exponent_str + str(exponent)
 
 
 ## Returns a named number string such as "1.00 Million", "1.00 Billion", etc.
@@ -841,3 +877,4 @@ func longitude(x: float, decimal_pl := 0, lat_lon_type := LatitudeLongitudeType.
 				label = label.to_lower()
 	
 	return "%.*f° %s" % [decimal_pl, x, label]
+
