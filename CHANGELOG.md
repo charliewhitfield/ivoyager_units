@@ -14,6 +14,7 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Fixed
 * IVQFormat.number() no longer leaves a trailing "." ("100.", "1000."), returns "INF" or "-INF" for infinite x, and no longer shows very small MIN_PRECISION or PRECISION numbers as all zeros.
+* IVQFormat.prefixed_unit() and named_number() move to the next prefix or name whenever the number would show as 1000 at the given precision ("1000.0 W" is now "1.0000 kW", and "0.9996 Billion" is "999.6 Million"), and show infinite x as "INF".
 
 
 ## [v0.1.2] - 2025-06-29

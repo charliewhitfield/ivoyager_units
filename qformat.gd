@@ -81,6 +81,9 @@ enum LatitudeLongitudeType {
 	PITCH_YAW, ## E.g., "-30° pitch, -30° yaw"
 }
 
+# Significant digits that round-trip a float; number() shows any more as zeros.
+const _MAX_DIGITS := 17
+
 
 ## String for formatting scientific notation. Displays numbers in "9.99e9" format
 ## by default. Set to " ×10^" for "9.99 ×10^9" instead.
@@ -459,15 +462,14 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 	const DYNAMIC_PRECISION := NumberType.DYNAMIC_PRECISION
 	const DECIMAL_PLACES := NumberType.DECIMAL_PLACES
 	const LOG_MULTIPLIER := 1.0 / log(10.0)
-	const MAX_DIGITS := 17
 	
 	assert(precision >= -1)
 	if is_nan(x):
 		return "NAN"
-	if number_type == DECIMAL_PLACES or precision == -1:
-		return String.num(x, precision)
 	if is_inf(x):
 		return "INF" if x > 0.0 else "-INF"
+	if number_type == DECIMAL_PLACES or precision == -1:
+		return String.num(x, precision)
 	
 	# approximate "~" prepend for zero precision
 	var prepend := ""
@@ -489,7 +491,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 	# estimate of the exponent can be one off near a power of ten, and rounding
 	# can carry into the next power (99.96 -> 100.0); either shows up as a
 	# significand out of range, and re-rounding at the corrected exponent fixes it.
-	var n_digits := mini(precision, MAX_DIGITS)
+	var n_digits := mini(precision, _MAX_DIGITS)
 	var exponent := floori(log(abs_x) * LOG_MULTIPLIER)
 	var shift := n_digits - 1 - exponent
 	var significand: float
@@ -544,7 +546,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 ## which accounts for rounding). Set to 999.5 to name numbers starting at
 ## "Thousand".[br][br]
 ##
-## Returns "NAN" if [param x] is NAN.
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
 func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXED_CASE,
 		round_unnamed := false, min_named := 999999.5) -> String:
 	const SCIENTIFIC := NumberType.SCIENTIFIC
@@ -553,6 +555,8 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	
 	if is_nan(x):
 		return "NAN"
+	if is_inf(x):
+		return number(x)
 	
 	var abs_x := absf(x)
 	if abs_x < min_named:
@@ -562,16 +566,20 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	
 	var number_type := MIN_PRECISION # unless we go past "Decillion" below
 	var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
-	if exponent_triples < 1: # possible due to imprecission in equation above
+	var power := 10.0 ** (exponent_triples * 3)
+	if abs_x >= power * 1000.0: # log can be one off at a power of 1000
+		exponent_triples += 1
+	elif abs_x < power:
+		exponent_triples -= 1
+	if exponent_triples < 1: # min_named < 1000
 		exponent_triples = 1
 	elif exponent_triples > _n_large_number_names:
 		exponent_triples = _n_large_number_names
 		number_type = SCIENTIFIC
 	x /= 10.0 ** (exponent_triples * 3) # requires float operation! (not int ** int)
-	
-	# Fix bump up to next triplet due to imprecision and rounding
-	if roundi(x) == 1000 and exponent_triples < _n_large_number_names:
-		x /= 1000
+	if (absf(x) >= 950.0 and exponent_triples < _n_large_number_names
+			and _rounds_to_thousand(absf(x), precision, number_type)):
+		x = signf(x)
 		exponent_triples += 1
 	
 	var number_name := _large_number_names_tr[exponent_triples - 1]
@@ -684,37 +692,37 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 		return "NAN"
 	if unit and unit != &" ":
 		x = IVQConvert.from_internal(x, unit)
-	var exponent_triples := 0
-	if x != 0.0:
-		exponent_triples = floori(log(absf(x)) * LOG_MULTIPLIER_3_ORDERS)
-	var si_index := exponent_triples + _prefix_offset
-	if si_index < 0:
-		si_index = 0
-		exponent_triples = -_prefix_offset
-	elif si_index >= _n_prefixes:
-		si_index = _n_prefixes - 1
-		exponent_triples = si_index - _prefix_offset
-	x /= 10.0 ** (exponent_triples * 3) # possibly negative exponent, need float
+	var si_index := _prefix_offset
+	var abs_x := absf(x)
+	if abs_x != 0.0 and abs_x != INF:
+		var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
+		var power := 10.0 ** (exponent_triples * 3)
+		if abs_x >= power * 1000.0: # log can be one off at a power of 1000
+			exponent_triples += 1
+		elif abs_x < power:
+			exponent_triples -= 1
+		si_index = clampi(exponent_triples + _prefix_offset, 0, _n_prefixes - 1)
+		x /= 10.0 ** ((si_index - _prefix_offset) * 3) # possibly negative exponent, need float
+		if (absf(x) >= 950.0 and si_index < _n_prefixes - 1
+				and _rounds_to_thousand(absf(x), precision, number_type)):
+			x = signf(x)
+			si_index += 1
 	
 	var number_str := number(x, precision, number_type)
-	if number_str == "1000" and si_index < _n_prefixes - 1:
-		# Sometimes get results like "1000 MWh" due to imprecision and round up
-		number_str = number(1.0, precision, number_type)
-		si_index += 1
-	
 	var unit_str: String
+	var long_form: String = _long_forms_tr.get(unit, "") if text_format >= 3 else ""
 	
-	if text_format >= 3 and _long_forms_tr.has(unit): # long format
+	if long_form: # long format
 		var prefix_name: String = prefix_names[si_index]
 		if text_format == LONG_MIXED_CASE:
 			if prefix_name == "":
-				unit_str = " " + _long_forms_tr[unit]
+				unit_str = " " + long_form
 			else:
-				unit_str = " " + prefix_name + _long_forms_tr[unit].to_lower()
+				unit_str = " " + prefix_name + long_form.to_lower()
 		elif text_format == LONG_UPPER_CASE:
-			unit_str = " " + (prefix_name + _long_forms_tr[unit]).to_upper()
+			unit_str = " " + (prefix_name + long_form).to_upper()
 		else: # LONG_LOWER_CASE
-			unit_str = " " + (prefix_name + _long_forms_tr[unit]).to_lower()
+			unit_str = " " + (prefix_name + long_form).to_lower()
 	
 	else: # short format (no case changes for prefix or symbols)
 		var prefix_symbol: String = prefix_symbols[si_index]
@@ -878,3 +886,16 @@ func longitude(x: float, decimal_pl := 0, lat_lon_type := LatitudeLongitudeType.
 	
 	return "%.*f° %s" % [decimal_pl, x, label]
 
+
+# Returns true if number() would show finite abs_x as 1000 or more. Call only for
+# abs_x of 950 or more; nothing smaller rounds to 1000 at any precision. Dividing
+# by a power of 1000 can leave abs_x a float error over 1000, which returns true.
+func _rounds_to_thousand(abs_x: float, precision: int, number_type: NumberType) -> bool:
+	if number_type == NumberType.DECIMAL_PLACES or precision == -1:
+		return String.num(abs_x, precision).to_float() >= 1000.0
+	var n_digits := clampi(precision, 1, _MAX_DIGITS)
+	# number() shows whole numbers in full here
+	if (number_type == NumberType.MIN_PRECISION or (number_type == NumberType.DYNAMIC
+			and abs_x < dynamic_large and abs_x > dynamic_small)):
+		n_digits = maxi(n_digits, 3)
+	return _round_to_digits(abs_x, n_digits - 3) >= 10.0 ** n_digits
