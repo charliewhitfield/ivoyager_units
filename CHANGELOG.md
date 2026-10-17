@@ -7,7 +7,7 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.2.3] - UNRELEASED
 
 ### Added
-* IVQFormat.prefixed_unit() returns a bare SI prefix ("100k" or "100 k") for unit &"" or &" ".
+* IVQFormat.metric_number() formats a unitless number with an SI prefix ("55.5k", "999µ"), skipping "m" by default.
 
 ### Changed
 * Rewrote IVQFormat.number(), now ~20% faster; it rounds half away from zero and shows digits past 17 as zeros.

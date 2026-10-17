@@ -607,6 +607,32 @@ func modified_named_number(x: float, precision := 3, text_format := TextFormat.S
 			min_named) + suffix
 
 
+## Returns a number string with an SI prefix symbol and no unit, such as "55.5k",
+## "1.20G" or "999µ", for a number that has no unit of its own. The number part
+## is between "1.00" and "999" as in [method prefixed_unit] and is formatted as in
+## [method number] with NumberType.DYNAMIC.[br][br]
+##
+## Set [param space] for a space before the prefix ("55.5 k"). A number needing
+## no prefix never has a trailing space ("100").[br][br]
+##
+## With [param skip_m] (the default), the "m" (milli) prefix is never used:
+## numbers from 0.001 to 1 are decimals ("0.500", "0.00100"), and smaller ones
+## take µ and smaller prefixes ("999µ").[br][br]
+##
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
+func metric_number(x: float, precision := 3, space := false, skip_m := true) -> String:
+	if x == 0.0 or !is_finite(x):
+		return number(x, precision)
+	var si_index := _get_prefix_index(absf(x), precision, NumberType.DYNAMIC)
+	if skip_m and si_index == _prefix_offset - 1:
+		return number(x, precision, NumberType.MIN_PRECISION)
+	x /= 10.0 ** ((si_index - _prefix_offset) * 3) # possibly negative exponent, need float
+	var number_str := number(x, precision)
+	if si_index == _prefix_offset:
+		return number_str
+	return number_str + (" " if space else "") + prefix_symbols[si_index]
+
+
 ## Calls a method specified in [member dynamic_unit_callables]. For example,
 ## [param callable_name] "length_m_km_au_prefixed_pc" will result in quantity
 ## strings in units m, km, au, pc, kpc, Mpc, Gpc, etc. depending on the size of
@@ -674,9 +700,6 @@ func fixed_unit(x: float, unit: StringName, precision := 3,
 ## the generated string may look ok but be incorrect. E.g., 1000.0 m^3 would
 ## generate something like "1.00 km^3".[br][br]
 ##
-## For a bare prefix with no unit, pass [param unit] &"" for "100k" or &" " for
-## "100 k". Either way, a quantity needing no prefix has no trailing space ("100").[br][br]
-##
 ## The numerical part of the quantity string will be formatted as in [method number].
 ## Use of DYNAMIC or DYNAMIC_PRECISION makes the most sense here, so that scientific
 ## notation will happen only for quantities outside the range of SI units.[br][br]
@@ -686,27 +709,16 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 		number_type := NumberType.DYNAMIC, text_format := TextFormat.SHORT_MIXED_CASE) -> String:
 	const LONG_MIXED_CASE := TextFormat.LONG_MIXED_CASE
 	const LONG_UPPER_CASE := TextFormat.LONG_UPPER_CASE
-	const LOG_MULTIPLIER_3_ORDERS := 1.0 / (3.0 * log(10.0))
 	
 	if is_nan(x):
 		return "NAN"
-	if unit and unit != &" ":
+	if unit:
 		x = IVQConvert.from_internal(x, unit)
 	var si_index := _prefix_offset
 	var abs_x := absf(x)
 	if abs_x != 0.0 and abs_x != INF:
-		var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
-		var power := 10.0 ** (exponent_triples * 3)
-		if abs_x >= power * 1000.0: # log can be one off at a power of 1000
-			exponent_triples += 1
-		elif abs_x < power:
-			exponent_triples -= 1
-		si_index = clampi(exponent_triples + _prefix_offset, 0, _n_prefixes - 1)
+		si_index = _get_prefix_index(abs_x, precision, number_type)
 		x /= 10.0 ** ((si_index - _prefix_offset) * 3) # possibly negative exponent, need float
-		if (absf(x) >= 950.0 and si_index < _n_prefixes - 1
-				and _rounds_to_thousand(absf(x), precision, number_type)):
-			x = signf(x)
-			si_index += 1
 	
 	var number_str := number(x, precision, number_type)
 	var unit_str: String
@@ -726,11 +738,7 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 	
 	else: # short format (no case changes for prefix or symbols)
 		var prefix_symbol: String = prefix_symbols[si_index]
-		if unit == &"":
-			unit_str = prefix_symbol
-		elif unit == &" ":
-			unit_str = " " + prefix_symbol if prefix_symbol else ""
-		elif unspaced_unit_symbols.has(unit):
+		if unspaced_unit_symbols.has(unit):
 			if prefix_symbol == "":
 				unit_str = unspaced_unit_symbols[unit]
 			else: # prefix needs a space!
@@ -885,6 +893,24 @@ func longitude(x: float, decimal_pl := 0, lat_lon_type := LatitudeLongitudeType.
 				label = label.to_lower()
 	
 	return "%.*f° %s" % [decimal_pl, x, label]
+
+
+# Returns the index in prefix_symbols of the prefix that leaves finite, nonzero
+# abs_x showing from 1 to 999 in number(), clamped to the prefixes there are.
+func _get_prefix_index(abs_x: float, precision: int, number_type: NumberType) -> int:
+	const LOG_MULTIPLIER_3_ORDERS := 1.0 / (3.0 * log(10.0))
+	var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
+	var power := 10.0 ** (exponent_triples * 3)
+	if abs_x >= power * 1000.0: # log can be one off at a power of 1000
+		exponent_triples += 1
+	elif abs_x < power:
+		exponent_triples -= 1
+	var si_index := clampi(exponent_triples + _prefix_offset, 0, _n_prefixes - 1)
+	var scaled_x := abs_x / 10.0 ** ((si_index - _prefix_offset) * 3)
+	if (scaled_x >= 950.0 and si_index < _n_prefixes - 1
+			and _rounds_to_thousand(scaled_x, precision, number_type)):
+		si_index += 1
+	return si_index
 
 
 # Returns true if number() would show finite abs_x as 1000 or more. Call only for
