@@ -8,6 +8,7 @@ File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 * The IVUnits template declares, in `AUTOMATION_PROPERTIES`, the unit constants an automation client reads to convert to and from internal units.
+* German translation: a `de` column in `units_numbers_text.csv`.
 * IVQFormat.metric_number() formats a unitless number with an SI prefix ("55.5k", "999µ"), skipping "m" by default.
 
 ### Changed
