@@ -26,8 +26,8 @@ extends Node
 ## helps ensure) that the calling project uses consistant internal units.[br][br]
 ## 
 ## If using named numbers or "long form" units, you'll need to add translations
-## to your project. An Engligh translation is included in the plugin in file
-## [code]ivoyager_units/text/unit_numbers_text.en.translation[/code].[br][br]
+## to your project. An English translation is included in the plugin in file
+## [code]ivoyager_units/text/units_numbers_text.en.translation[/code].[br][br]
 ##
 ## Some array and dictionary properties require a [method reset] call after
 ## modifying; see property comments. [method reset] is also required if language
@@ -80,6 +80,9 @@ enum LatitudeLongitudeType {
 	LAT_LON, ## E.g., "-30° lat, 330° lon"
 	PITCH_YAW, ## E.g., "-30° pitch, -30° yaw"
 }
+
+# Significant digits that round-trip a float; number() shows any more as zeros.
+const _MAX_DIGITS := 17
 
 
 ## String for formatting scientific notation. Displays numbers in "9.99e9" format
@@ -390,6 +393,16 @@ var _to_localize: Array[StringName] = [&"TXT_NORTH", &"TXT_SOUTH", &"TXT_EAST", 
 		&"TXT_LATITUDE_SHORT", &"TXT_LONGITUDE_SHORT"]
 
 
+# Returns abs_x * 10^shift rounded to an integer. Overflow of 10^shift (for
+# subnormal abs_x) and the error of an inexact negative power of ten are avoided.
+static func _round_to_digits(abs_x: float, shift: int) -> float:
+	if shift > 300:
+		return roundf(abs_x * 1e300 * 10.0 ** (shift - 300))
+	if shift >= 0:
+		return roundf(abs_x * 10.0 ** shift)
+	return roundf(abs_x / 10.0 ** -shift)
+
+
 func _ready() -> void:
 	reset()
 	
@@ -438,19 +451,23 @@ func reset() -> void:
 ## If [param precision] is 0 and number_type != DECIMAL_PLACES, return string
 ## will have 1 significant digit with a prepended "~". E.g., "~1 km" or "~0.5 km".[br][br]
 ##
-## Returns "NAN" if [param x] is NAN.
+## Rounds half away from zero. Significant digits beyond 17, more than a float
+## holds, are shown as zeros.[br][br]
+##
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
 func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> String:
-	const DYNAMIC := NumberType.DYNAMIC
 	const SCIENTIFIC := NumberType.SCIENTIFIC
 	const MIN_PRECISION := NumberType.MIN_PRECISION
 	const PRECISION := NumberType.PRECISION
+	const DYNAMIC_PRECISION := NumberType.DYNAMIC_PRECISION
 	const DECIMAL_PLACES := NumberType.DECIMAL_PLACES
 	const LOG_MULTIPLIER := 1.0 / log(10.0)
-	const DECIMAL_UNICODE := ord(".")
 	
 	assert(precision >= -1)
 	if is_nan(x):
 		return "NAN"
+	if is_inf(x):
+		return "INF" if x > 0.0 else "-INF"
 	if number_type == DECIMAL_PLACES or precision == -1:
 		return String.num(x, precision)
 	
@@ -460,42 +477,63 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 		prepend = "~"
 		precision = 1
 	
-	# handle 0.0 case (avoids math error below and we don't want "0.00e0" even if SCIENTIFIC)
+	# zero has no exponent, so is never scientific; -0.0 gets no sign
 	if x == 0.0:
-		return "%s%.*f" % [prepend, precision - 1, 0.0] # e.g., "0.00" for precision 3
+		if precision == 1:
+			return prepend + "0"
+		return prepend + "0." + "0".repeat(precision - 1)
 	
+	if x < 0.0:
+		prepend += "-"
 	var abs_x := absf(x)
-	var exponent := floori(log(abs_x) * LOG_MULTIPLIER)
 	
-	# Note: Due to imprecision in equationa above AND to round up below (to 10,
-	# 100, etc.), exponent is sometimes one less than it should be. This is
-	# handled below where needed.
+	# Round to an integer significand of exactly n_digits digits. The log
+	# estimate of the exponent can be one off near a power of ten, and rounding
+	# can carry into the next power (99.96 -> 100.0); either shows up as a
+	# significand out of range, and re-rounding at the corrected exponent fixes it.
+	var n_digits := mini(precision, _MAX_DIGITS)
+	var exponent := floori(log(abs_x) * LOG_MULTIPLIER)
+	var shift := n_digits - 1 - exponent
+	var significand: float
+	if shift > 300:
+		significand = _round_to_digits(abs_x, shift)
+	elif shift >= 0: # common cases inline: a call costs ~10% of this function
+		significand = roundf(abs_x * 10.0 ** shift)
+	else:
+		significand = roundf(abs_x / 10.0 ** -shift)
+	var significand_limit := 10.0 ** n_digits
+	if significand >= significand_limit:
+		exponent += 1
+		significand = _round_to_digits(abs_x, n_digits - 1 - exponent)
+	elif significand < significand_limit / 10.0:
+		exponent -= 1
+		significand = _round_to_digits(abs_x, n_digits - 1 - exponent)
+	# At 16 or 17 digits, float error can leave a value that rounds to a power
+	# of ten on the wrong side of it at either exponent.
+	if significand >= significand_limit:
+		significand = significand_limit / 10.0
+		exponent += 1
+	elif significand < significand_limit / 10.0:
+		significand = significand_limit / 10.0
+	var digits := str(int(significand))
+	if n_digits < precision:
+		digits += "0".repeat(precision - n_digits)
 	
 	if (number_type == MIN_PRECISION or number_type == PRECISION
 			or (number_type != SCIENTIFIC and abs_x < dynamic_large and abs_x > dynamic_small)):
-		var decimal_pl := precision - exponent - 1
-		if decimal_pl > 0: # has decimal part
-			var number_str := "%.*f" % [decimal_pl, x]
-			# Fix excess precision (e.g., 0.999999 w/ precision 3 -> "1.000").
-			if number_str[-1] == "0":
-				if number_str.remove_char(DECIMAL_UNICODE).lstrip("-0").length() > precision:
-					number_str = number_str.left(-1)
-			return prepend + number_str
-		elif number_type == DYNAMIC or number_type == MIN_PRECISION or decimal_pl == 0:
-			return prepend + String.num(x, 0) # whole number
-		else: # PRECISION or DYNAMIC_PRECISION whole number w/ too much precision
-			return prepend + String.num(snappedf(x, 10.0 ** -decimal_pl), 0) # 555555 -> "556000"
+		if exponent < 0:
+			return prepend + "0." + "0".repeat(-exponent - 1) + digits
+		if exponent < precision - 1:
+			return prepend + digits.left(exponent + 1) + "." + digits.substr(exponent + 1)
+		if (exponent == precision - 1 or number_type == PRECISION
+				or number_type == DYNAMIC_PRECISION):
+			return prepend + digits + "0".repeat(exponent - precision + 1) # 555555 -> "556000"
+		return prepend + String.num(roundf(abs_x), 0) # whole number, over-precision allowed
 	
 	# scientific
-	var sign_str := "-" if x < 0.0 else ""
-	var divisor := 10.0 ** exponent # need float for 0.1, 0.01, ...!
-	var mantissa := abs_x / divisor if divisor != 0.0 else 1.0
-	var mantissa_str := "%.*f" % [precision - 1, mantissa]
-	if mantissa_str.length() > 1 and mantissa_str[1] == "0": # fix "10"
-		mantissa_str = "%.*f" % [precision - 1, 1.0]
-		exponent += 1
-	
-	return prepend + sign_str + mantissa_str + exponent_str + str(exponent)
+	if precision == 1:
+		return prepend + digits + exponent_str + str(exponent)
+	return prepend + digits.left(1) + "." + digits.substr(1) + exponent_str + str(exponent)
 
 
 ## Returns a named number string such as "1.00 Million", "1.00 Billion", etc.
@@ -508,7 +546,7 @@ func number(x: float, precision := 3, number_type := NumberType.DYNAMIC) -> Stri
 ## which accounts for rounding). Set to 999.5 to name numbers starting at
 ## "Thousand".[br][br]
 ##
-## Returns "NAN" if [param x] is NAN.
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
 func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXED_CASE,
 		round_unnamed := false, min_named := 999999.5) -> String:
 	const SCIENTIFIC := NumberType.SCIENTIFIC
@@ -517,6 +555,8 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	
 	if is_nan(x):
 		return "NAN"
+	if is_inf(x):
+		return number(x)
 	
 	var abs_x := absf(x)
 	if abs_x < min_named:
@@ -526,16 +566,20 @@ func named_number(x: float, precision := 3, text_format := TextFormat.SHORT_MIXE
 	
 	var number_type := MIN_PRECISION # unless we go past "Decillion" below
 	var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
-	if exponent_triples < 1: # possible due to imprecission in equation above
+	var power := 10.0 ** (exponent_triples * 3)
+	if abs_x >= power * 1000.0: # log can be one off at a power of 1000
+		exponent_triples += 1
+	elif abs_x < power:
+		exponent_triples -= 1
+	if exponent_triples < 1: # min_named < 1000
 		exponent_triples = 1
 	elif exponent_triples > _n_large_number_names:
 		exponent_triples = _n_large_number_names
 		number_type = SCIENTIFIC
 	x /= 10.0 ** (exponent_triples * 3) # requires float operation! (not int ** int)
-	
-	# Fix bump up to next triplet due to imprecision and rounding
-	if roundi(x) == 1000 and exponent_triples < _n_large_number_names:
-		x /= 1000
+	if (absf(x) >= 950.0 and exponent_triples < _n_large_number_names
+			and _rounds_to_thousand(absf(x), precision, number_type)):
+		x = signf(x)
 		exponent_triples += 1
 	
 	var number_name := _large_number_names_tr[exponent_triples - 1]
@@ -561,6 +605,32 @@ func modified_named_number(x: float, precision := 3, text_format := TextFormat.S
 		return "NAN"
 	return prefix + named_number(x * multiplier, precision, text_format, round_unnamed,
 			min_named) + suffix
+
+
+## Returns a number string with an SI prefix symbol and no unit, such as "55.5k",
+## "1.20G" or "999µ", for a number that has no unit of its own. The number part
+## is between "1.00" and "999" as in [method prefixed_unit] and is formatted as in
+## [method number] with NumberType.DYNAMIC.[br][br]
+##
+## Set [param space] for a space before the prefix ("55.5 k"). A number needing
+## no prefix never has a trailing space ("100").[br][br]
+##
+## With [param skip_m] (the default), the "m" (milli) prefix is never used:
+## numbers from 0.001 to 1 are decimals ("0.500", "0.00100"), and smaller ones
+## take µ and smaller prefixes ("999µ").[br][br]
+##
+## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
+func metric_number(x: float, precision := 3, space := false, skip_m := true) -> String:
+	if x == 0.0 or !is_finite(x):
+		return number(x, precision)
+	var si_index := _get_prefix_index(absf(x), precision, NumberType.DYNAMIC)
+	if skip_m and si_index == _prefix_offset - 1:
+		return number(x, precision, NumberType.MIN_PRECISION)
+	x /= 10.0 ** ((si_index - _prefix_offset) * 3) # possibly negative exponent, need float
+	var number_str := number(x, precision)
+	if si_index == _prefix_offset:
+		return number_str
+	return number_str + (" " if space else "") + prefix_symbols[si_index]
 
 
 ## Calls a method specified in [member dynamic_unit_callables]. For example,
@@ -639,43 +709,32 @@ func prefixed_unit(x: float, unit: StringName, precision := 3,
 		number_type := NumberType.DYNAMIC, text_format := TextFormat.SHORT_MIXED_CASE) -> String:
 	const LONG_MIXED_CASE := TextFormat.LONG_MIXED_CASE
 	const LONG_UPPER_CASE := TextFormat.LONG_UPPER_CASE
-	const LOG_MULTIPLIER_3_ORDERS := 1.0 / (3.0 * log(10.0))
 	
 	if is_nan(x):
 		return "NAN"
 	if unit:
 		x = IVQConvert.from_internal(x, unit)
-	var exponent_triples := 0
-	if x != 0.0:
-		exponent_triples = floori(log(absf(x)) * LOG_MULTIPLIER_3_ORDERS)
-	var si_index := exponent_triples + _prefix_offset
-	if si_index < 0:
-		si_index = 0
-		exponent_triples = -_prefix_offset
-	elif si_index >= _n_prefixes:
-		si_index = _n_prefixes - 1
-		exponent_triples = si_index - _prefix_offset
-	x /= 10.0 ** (exponent_triples * 3) # possibly negative exponent, need float
+	var si_index := _prefix_offset
+	var abs_x := absf(x)
+	if abs_x != 0.0 and abs_x != INF:
+		si_index = _get_prefix_index(abs_x, precision, number_type)
+		x /= 10.0 ** ((si_index - _prefix_offset) * 3) # possibly negative exponent, need float
 	
 	var number_str := number(x, precision, number_type)
-	if number_str == "1000" and si_index < _n_prefixes - 1:
-		# Sometimes get results like "1000 MWh" due to imprecision and round up
-		number_str = number(1.0, precision, number_type)
-		si_index += 1
-	
 	var unit_str: String
+	var long_form: String = _long_forms_tr.get(unit, "") if text_format >= 3 else ""
 	
-	if text_format >= 3 and _long_forms_tr.has(unit): # long format
+	if long_form: # long format
 		var prefix_name: String = prefix_names[si_index]
 		if text_format == LONG_MIXED_CASE:
 			if prefix_name == "":
-				unit_str = " " + _long_forms_tr[unit]
+				unit_str = " " + long_form
 			else:
-				unit_str = " " + prefix_name + _long_forms_tr[unit].to_lower()
+				unit_str = " " + prefix_name + long_form.to_lower()
 		elif text_format == LONG_UPPER_CASE:
-			unit_str = " " + (prefix_name + _long_forms_tr[unit]).to_upper()
+			unit_str = " " + (prefix_name + long_form).to_upper()
 		else: # LONG_LOWER_CASE
-			unit_str = " " + (prefix_name + _long_forms_tr[unit]).to_lower()
+			unit_str = " " + (prefix_name + long_form).to_lower()
 	
 	else: # short format (no case changes for prefix or symbols)
 		var prefix_symbol: String = prefix_symbols[si_index]
@@ -834,3 +893,35 @@ func longitude(x: float, decimal_pl := 0, lat_lon_type := LatitudeLongitudeType.
 				label = label.to_lower()
 	
 	return "%.*f° %s" % [decimal_pl, x, label]
+
+
+# Returns the index in prefix_symbols of the prefix that leaves finite, nonzero
+# abs_x showing from 1 to 999 in number(), clamped to the prefixes there are.
+func _get_prefix_index(abs_x: float, precision: int, number_type: NumberType) -> int:
+	const LOG_MULTIPLIER_3_ORDERS := 1.0 / (3.0 * log(10.0))
+	var exponent_triples := floori(log(abs_x) * LOG_MULTIPLIER_3_ORDERS)
+	var power := 10.0 ** (exponent_triples * 3)
+	if abs_x >= power * 1000.0: # log can be one off at a power of 1000
+		exponent_triples += 1
+	elif abs_x < power:
+		exponent_triples -= 1
+	var si_index := clampi(exponent_triples + _prefix_offset, 0, _n_prefixes - 1)
+	var scaled_x := abs_x / 10.0 ** ((si_index - _prefix_offset) * 3)
+	if (scaled_x >= 950.0 and si_index < _n_prefixes - 1
+			and _rounds_to_thousand(scaled_x, precision, number_type)):
+		si_index += 1
+	return si_index
+
+
+# Returns true if number() would show finite abs_x as 1000 or more. Call only for
+# abs_x of 950 or more; nothing smaller rounds to 1000 at any precision. Dividing
+# by a power of 1000 can leave abs_x a float error over 1000, which returns true.
+func _rounds_to_thousand(abs_x: float, precision: int, number_type: NumberType) -> bool:
+	if number_type == NumberType.DECIMAL_PLACES or precision == -1:
+		return String.num(abs_x, precision).to_float() >= 1000.0
+	var n_digits := clampi(precision, 1, _MAX_DIGITS)
+	# number() shows whole numbers in full here
+	if (number_type == NumberType.MIN_PRECISION or (number_type == NumberType.DYNAMIC
+			and abs_x < dynamic_large and abs_x > dynamic_small)):
+		n_digits = maxi(n_digits, 3)
+	return _round_to_digits(abs_x, n_digits - 3) >= 10.0 ** n_digits

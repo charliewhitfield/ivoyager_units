@@ -4,6 +4,24 @@ This file documents changes to [ivoyager_units](https://github.com/ivoyager/ivoy
 
 File format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.3] - UNRELEASED
+
+### Added
+* IVQFormat.metric_number() formats a unitless number with an SI prefix ("55.5k", "999µ"), skipping "m" by default.
+
+### Changed
+* Rewrote IVQFormat.number(), now ~20% faster; it rounds half away from zero and shows digits past 17 as zeros.
+
+### Removed
+* Unused text keys `TXT_DEG`, `TXT_DEG_C`, `TXT_DEG_F`, `TXT_DEG_PER_CENTURY`, `TXT_DEG_PER_DAY`, `TXT_DEG_PER_YEAR` and `TXT_ROLL` from `units_numbers_text.csv`.
+
+### Fixed
+* IVQFormat.number() no longer leaves a trailing "." ("100.", "1000."), returns "INF" or "-INF" for infinite x, and no longer shows very small MIN_PRECISION or PRECISION numbers as all zeros.
+* IVQFormat.prefixed_unit() and named_number() move to the next prefix or name whenever the number would show as 1000 at the given precision ("1000.0 W" is now "1.0000 kW", and "0.9996 Billion" is "999.6 Million"), and show infinite x as "INF".
+* IVQFormat's class doc misnamed the plugin's English translation file, `text/units_numbers_text.en.translation`.
+* English text for `TXT_DEGREES_PER_CENTURY` read "Per Century" and for `TXT_MILIMETERS` "Milimeters".
+
+
 ## [v0.1.2] - 2025-06-29
 
 Released using Godot 4.7.
@@ -71,6 +89,7 @@ Released using Godot 4.3.
 
 This plugin resulted from splitting the now-depreciated [Table Importer](https://github.com/ivoyager/ivoyager_table_importer) (v0.0.9) into two plugins: [Tables](https://github.com/ivoyager/ivoyager_tables) (v0.0.1) and [Units](https://github.com/ivoyager/ivoyager_units) (v0.0.1).
 
+[0.2.3]: https://github.com/ivoyager/ivoyager_units/compare/v0.1.2...HEAD
 [v0.1.2]: https://github.com/ivoyager/ivoyager_units/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/ivoyager/ivoyager_units/compare/v0.1...v0.1.1
 [v0.1]: https://github.com/ivoyager/ivoyager_units/compare/v0.0.4...v0.1
