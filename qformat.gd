@@ -26,8 +26,8 @@ extends Node
 ## helps ensure) that the calling project uses consistant internal units.[br][br]
 ## 
 ## If using named numbers or "long form" units, you'll need to add translations
-## to your project. An Engligh translation is included in the plugin in file
-## [code]ivoyager_units/text/unit_numbers_text.en.translation[/code].[br][br]
+## to your project. An English translation is included in the plugin in file
+## [code]ivoyager_units/text/units_numbers_text.en.translation[/code].[br][br]
 ##
 ## Some array and dictionary properties require a [method reset] call after
 ## modifying; see property comments. [method reset] is also required if language
