@@ -1,91 +1,91 @@
-id,en
-TXT_ASTRONOMICAL_UNITS,Astronomical Units
-TXT_ATMOSPHERES,Atmospheres
-TXT_BILLION,Billion
-TXT_CANDELAS,Candelas
-TXT_CANDELAS_PER_SQUARE_METER,Candelas per Square Meter
-TXT_CENTIMETERS,Centimeters
-TXT_CENTURIES,Centuries
-TXT_COULOMBS,Coulombs
-TXT_CUBIC_KILOMETERS,Cubic Kilometers
-TXT_CUBIC_METERS,Cubic Meters
-TXT_DAYS,Days
-TXT_DECILLION,Decillion
-TXT_DEGREES,Degrees
-TXT_DEGREES_CELSIUS,Degrees Celsius
-TXT_DEGREES_FAHRENHEIT,Degrees Fahrenheit
-TXT_DEGREES_PER_CENTURY,Degrees per Century
-TXT_DEGREES_PER_DAY,Degrees per Day
-TXT_DEGREES_PER_YEAR,Degrees per Year
-TXT_ELECTRONVOLTS,Electronvolts
-TXT_EAST,East
-TXT_EAST_SHORT,E
-TXT_GRAMS,Grams
-TXT_GRAMS_PER_CUBIC_CENTIMETER,Grams per Cubic Centimeter
-TXT_HECTARES,Hectares
-TXT_HERTZ,Hertz
-TXT_HOURS,Hours
-TXT_JOULES,Joules
-TXT_KELVIN,Kelvin
-TXT_KILOGRAMS,Kilograms
-TXT_KILOGRAMS_PER_DAY,Kilograms per Day
-TXT_KILOMETERS,Kilometers
-TXT_KILOMETERS_PER_HOUR,Kilometers per Hour
-TXT_KILOMETERS_PER_SECOND,Kilometers per Second
-TXT_KILOWATT_HOURS,Kilowatt Hours
-TXT_KILOWATTS,Kilowatts
-TXT_LATITUDE,Latitude
-TXT_LATITUDE_SHORT,Lat
-TXT_LIGHT_YEARS,Light-Years
-TXT_LITER,Liter
-TXT_LONGITUDE,Longitude
-TXT_LONGITUDE_SHORT,Lon
-TXT_LUMENS,Lumens
-TXT_MEGAPARSECS,Megaparsecs
-TXT_MEGAWATT_HOURS,Megawatt Hours
-TXT_MEGAWATTS,Megawatts
-TXT_METERS,Meters
-TXT_METERS_PER_SECOND,Meters per Second
-TXT_METERS_PER_SECOND_SQUARED,Meters per Second Squared
-TXT_MILIMETERS,Millimeters
-TXT_MILLION,Million
-TXT_MINUTES,Minutes
-TXT_NEWTONS,Newtons
-TXT_NONILLION,Nonillion
-TXT_NORTH,North
-TXT_NORTH_SHORT,N
-TXT_OCTILLION,Octillion
-TXT_PARSECS,Parsecs
-TXT_PASCALS,Pascals
-TXT_PER_CUBIC_METER,Per Cubic Meter
-TXT_PER_DAY,Per Day
-TXT_PER_YEAR,Per Year
-TXT_PERCENT,Percent
-TXT_PITCH,Pitch
-TXT_PPM,Parts per Million
-TXT_PPB,Parts per Billion
-TXT_QUADRILLION,Quadrillion
-TXT_QUINTILLION,Quintillion
-TXT_RADIANS,Radians
-TXT_SECONDS,Seconds
-TXT_SEPTILLION,Septillion
-TXT_SEXTILLION,Sextillion
-TXT_SOUTH,South
-TXT_SOUTH_SHORT,S
-TXT_SPEED_OF_LIGHT,Speed of Light
-TXT_SQUARE_KILOMETERS,Square Kilometers
-TXT_SQUARE_METERS,Square Meters
-TXT_STANDARD_GRAVITIES,Standard Gravities
-TXT_TESLAS,Teslas
-TXT_THOUSAND,Thousand
-TXT_TONNES,Tonnes
-TXT_TONNES_PER_DAY,Tonnes per Day
-TXT_TRILLION,Trillion
-TXT_VOLTS,Volts
-TXT_WATT_HOURS,Watt-hours
-TXT_WATTS,Watts
-TXT_WEBERS,Webers
-TXT_WEST,West
-TXT_WEST_SHORT,W
-TXT_YAW,Yaw
-TXT_YEARS,Years
+id,en,de
+TXT_ASTRONOMICAL_UNITS,Astronomical Units,Astronomische Einheiten
+TXT_ATMOSPHERES,Atmospheres,Atmosphären
+TXT_BILLION,Billion,Milliarden
+TXT_CANDELAS,Candelas,Candela
+TXT_CANDELAS_PER_SQUARE_METER,Candelas per Square Meter,Candela pro Quadratmeter
+TXT_CENTIMETERS,Centimeters,Zentimeter
+TXT_CENTURIES,Centuries,Jahrhunderte
+TXT_COULOMBS,Coulombs,Coulomb
+TXT_CUBIC_KILOMETERS,Cubic Kilometers,Kubikkilometer
+TXT_CUBIC_METERS,Cubic Meters,Kubikmeter
+TXT_DAYS,Days,Tage
+TXT_DECILLION,Decillion,Quintilliarden
+TXT_DEGREES,Degrees,Grad
+TXT_DEGREES_CELSIUS,Degrees Celsius,Grad Celsius
+TXT_DEGREES_FAHRENHEIT,Degrees Fahrenheit,Grad Fahrenheit
+TXT_DEGREES_PER_CENTURY,Degrees per Century,Grad pro Jahrhundert
+TXT_DEGREES_PER_DAY,Degrees per Day,Grad pro Tag
+TXT_DEGREES_PER_YEAR,Degrees per Year,Grad pro Jahr
+TXT_ELECTRONVOLTS,Electronvolts,Elektronenvolt
+TXT_EAST,East,Ost
+TXT_EAST_SHORT,E,O
+TXT_GRAMS,Grams,Gramm
+TXT_GRAMS_PER_CUBIC_CENTIMETER,Grams per Cubic Centimeter,Gramm pro Kubikzentimeter
+TXT_HECTARES,Hectares,Hektar
+TXT_HERTZ,Hertz,Hertz
+TXT_HOURS,Hours,Stunden
+TXT_JOULES,Joules,Joule
+TXT_KELVIN,Kelvin,Kelvin
+TXT_KILOGRAMS,Kilograms,Kilogramm
+TXT_KILOGRAMS_PER_DAY,Kilograms per Day,Kilogramm pro Tag
+TXT_KILOMETERS,Kilometers,Kilometer
+TXT_KILOMETERS_PER_HOUR,Kilometers per Hour,Kilometer pro Stunde
+TXT_KILOMETERS_PER_SECOND,Kilometers per Second,Kilometer pro Sekunde
+TXT_KILOWATT_HOURS,Kilowatt Hours,Kilowattstunden
+TXT_KILOWATTS,Kilowatts,Kilowatt
+TXT_LATITUDE,Latitude,Breite
+TXT_LATITUDE_SHORT,Lat,Br.
+TXT_LIGHT_YEARS,Light-Years,Lichtjahre
+TXT_LITER,Liter,Liter
+TXT_LONGITUDE,Longitude,Länge
+TXT_LONGITUDE_SHORT,Lon,Lg.
+TXT_LUMENS,Lumens,Lumen
+TXT_MEGAPARSECS,Megaparsecs,Megaparsec
+TXT_MEGAWATT_HOURS,Megawatt Hours,Megawattstunden
+TXT_MEGAWATTS,Megawatts,Megawatt
+TXT_METERS,Meters,Meter
+TXT_METERS_PER_SECOND,Meters per Second,Meter pro Sekunde
+TXT_METERS_PER_SECOND_SQUARED,Meters per Second Squared,Meter pro Quadratsekunde
+TXT_MILIMETERS,Millimeters,Millimeter
+TXT_MILLION,Million,Millionen
+TXT_MINUTES,Minutes,Minuten
+TXT_NEWTONS,Newtons,Newton
+TXT_NONILLION,Nonillion,Quintillionen
+TXT_NORTH,North,Nord
+TXT_NORTH_SHORT,N,N
+TXT_OCTILLION,Octillion,Quadrilliarden
+TXT_PARSECS,Parsecs,Parsec
+TXT_PASCALS,Pascals,Pascal
+TXT_PER_CUBIC_METER,Per Cubic Meter,Pro Kubikmeter
+TXT_PER_DAY,Per Day,Pro Tag
+TXT_PER_YEAR,Per Year,Pro Jahr
+TXT_PERCENT,Percent,Prozent
+TXT_PITCH,Pitch,Nicken
+TXT_PPM,Parts per Million,Millionstel
+TXT_PPB,Parts per Billion,Milliardstel
+TXT_QUADRILLION,Quadrillion,Billiarden
+TXT_QUINTILLION,Quintillion,Trillionen
+TXT_RADIANS,Radians,Radiant
+TXT_SECONDS,Seconds,Sekunden
+TXT_SEPTILLION,Septillion,Quadrillionen
+TXT_SEXTILLION,Sextillion,Trilliarden
+TXT_SOUTH,South,Süd
+TXT_SOUTH_SHORT,S,S
+TXT_SPEED_OF_LIGHT,Speed of Light,Lichtgeschwindigkeit
+TXT_SQUARE_KILOMETERS,Square Kilometers,Quadratkilometer
+TXT_SQUARE_METERS,Square Meters,Quadratmeter
+TXT_STANDARD_GRAVITIES,Standard Gravities,Normfallbeschleunigungen
+TXT_TESLAS,Teslas,Tesla
+TXT_THOUSAND,Thousand,Tausend
+TXT_TONNES,Tonnes,Tonnen
+TXT_TONNES_PER_DAY,Tonnes per Day,Tonnen pro Tag
+TXT_TRILLION,Trillion,Billionen
+TXT_VOLTS,Volts,Volt
+TXT_WATT_HOURS,Watt-hours,Wattstunden
+TXT_WATTS,Watts,Watt
+TXT_WEBERS,Webers,Weber
+TXT_WEST,West,West
+TXT_WEST_SHORT,W,W
+TXT_YAW,Yaw,Gieren
+TXT_YEARS,Years,Jahre
