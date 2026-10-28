@@ -615,12 +615,12 @@ func modified_named_number(x: float, precision := 3, text_format := TextFormat.S
 ## Set [param space] for a space before the prefix ("55.5 k"). A number needing
 ## no prefix never has a trailing space ("100").[br][br]
 ##
-## With [param skip_m] (the default), the "m" (milli) prefix is never used:
-## numbers from 0.001 to 1 are decimals ("0.500", "0.00100"), and smaller ones
-## take µ and smaller prefixes ("999µ").[br][br]
+## Set [param skip_m] to not use the "m" (milli) prefix (which mighte be confused
+## with "million"): numbers from 0.001 to 1 will be decimals ("0.500", "0.00100"),
+## while smaller ones will still take µ and smaller prefixes ("999µ").[br][br]
 ##
 ## Returns "NAN" if [param x] is NAN, "INF" or "-INF" if infinite.
-func metric_number(x: float, precision := 3, space := false, skip_m := true) -> String:
+func metric_number(x: float, precision := 3, space := false, skip_m := false) -> String:
 	if x == 0.0 or !is_finite(x):
 		return number(x, precision)
 	var si_index := _get_prefix_index(absf(x), precision, NumberType.DYNAMIC)
